@@ -48,7 +48,7 @@ io.on('connection', (socket) => {
     if (disconnectedUser && disconnectedUser.match) {
       const matchedUser = users.find((user) => user.id === disconnectedUser.match);
       if (matchedUser) {
-        matchedUser.socket.emit('chatPartnerDisconnected', 'Your chat partner has disconnected.');
+        matchedUser.socket.emit('chatPartnerDisconnected', 'Your chat partner has disconnected. You can stay here while we are searching a new chat partner for you.');
         matchedUser.match = null;
       }
     }
