@@ -19,19 +19,24 @@ const port = process.env.PORT || 5000;
 
 let users = [];
 
+const updateOnlineUsers = () => {
+  io.emit("onlineUsers", { online_users: users.length });
+};
+
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
-  socket.on("register", ({ userId, interests }) => {
+  socket.on("register", ({ userId, interests, isAdmin }) => {
     if (users.find((user) => user.userId === userId)) {
       socket.emit(
         "error",
         "User ID already exists. Please choose another one."
       );
     } else {
-      users.push({ id: socket.id, userId, interests, socket });
+      users.push({ id: socket.id, userId, interests, isAdmin, socket });
       socket.emit("connected");
       matchUser(socket);
+      updateOnlineUsers();
     }
   });
 
@@ -40,7 +45,10 @@ io.on("connection", (socket) => {
     if (sender && sender.match) {
       const recipient = users.find((user) => user.id === sender.match);
       if (recipient) {
-        recipient.socket.emit("receiveMessage", message);
+        recipient.socket.emit("receiveMessage", {
+          text: message.text,
+          isAdmin: sender.isAdmin,
+        });
       }
     }
   });
@@ -81,6 +89,7 @@ io.on("connection", (socket) => {
       }
     }
     users = users.filter((user) => user.id !== socket.id);
+    updateOnlineUsers();
     socket.disconnect();
   });
 
@@ -100,6 +109,7 @@ io.on("connection", (socket) => {
       }
     }
     users = users.filter((user) => user.id !== socket.id);
+    updateOnlineUsers();
   });
 });
 
@@ -123,16 +133,22 @@ const matchUser = (socket) => {
     socket.emit("matched", {
       userId: match.userId,
       interests: sharedInterests,
+      isAdmin: match.isAdmin,
     });
     match.socket.emit("matched", {
       userId: currentUser.userId,
       interests: sharedInterests,
+      isAdmin: currentUser.isAdmin,
     });
   }
 };
 
 app.get("/", (req, res) => {
   res.send("Server is running");
+});
+
+app.get("/online", (req, res) => {
+  res.send(JSON.stringify({ online_users: users.length }));
 });
 
 server.listen(port, () => console.log(`Server is running on port ${port}`));
